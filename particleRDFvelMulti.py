@@ -20,7 +20,9 @@ def distance(x,y,boxl):
     sep = np.where(sep< -boxl/2.,sep+boxl,sep)
     
     dist = np.sqrt(np.sum(sep**2,axis=-1))
-    return sep/dist[:,None], dist
+    
+    #return x-y/|x-y| and |x-y|, returns zeros for entry x=y
+    return np.divide(sep,dist[:,None],out=np.zeros_like(sep),where=sep!=0) , dist
 
 def velocitySq(vx,vy):
     #calculate the velocity difference magnitude sqared of point pair x,y  
@@ -28,7 +30,7 @@ def velocitySq(vx,vy):
 
 def velocityRadial(vx,vy,diff_uvec):
     #calculate the velocity difference magnitude sqared of point pair x,y  
-    return np.sum((vx - vy)*diff_uvec,axis=-1)
+    return np.absolute(np.sum((vx - vy)*diff_uvec,axis=-1))
 
 
 def worker(subData,procnum, return_dict):
@@ -65,7 +67,7 @@ def worker(subData,procnum, return_dict):
         # make distances and velocities at distances histograms
         rdf     += np.histogram(posdiffs,bins=binEdge)[0]
         vels    += stats.binned_statistic(posdiffs,veldiffs,statistic='sum',bins=binEdge)[0]
-        velsrad +=stats.binned_statistic(posdiffs,veldiffsrad,statistic='sum',bins=binEdge)[0]
+        velsrad += stats.binned_statistic(posdiffs,veldiffsrad,statistic='sum',bins=binEdge)[0]
          
     return_dict[procnum] = np.stack((rdf,vels,velsrad),axis=0)
 
@@ -98,7 +100,7 @@ binCenter=bins[2:50:2]
 
 #nSublists=len(os.sched_getaffinity(0))
 import os
-nSublists=os.environ["SLURM_CPUS_PER_TASK"]
+nSublists= int(os.environ["SLURM_CPUS_PER_TASK"])
 
 if __name__ == "__main__":
     
